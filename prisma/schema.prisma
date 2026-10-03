@@ -4,11 +4,73 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  USER_WALLET
+  SYSTEM_RESERVE
+  SYSTEM_FEE
+  SYSTEM_ESCROW
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  accounts  Account[]
+}
+
+model Account {
+  id            String        @id @default(uuid())
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id])
+  type          AccountType   @default(USER_WALLET)
+  currency      String        @default("USD")
+  balance       BigInt        @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  ledgerEntries LedgerEntry[]
+}
+
+model Transaction {
+  id             String            @id @default(uuid())
+  idempotencyKey String            @unique
+  reference      String            @unique
+  description    String?
+  status         TransactionStatus @default(PENDING)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  ledgerEntries  LedgerEntry[]
+}
+
+model LedgerEntry {
+  id            String      @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  accountId     String
+  account       Account     @relation(fields: [accountId], references: [id])
+  type          EntryType
+  amount        BigInt
+  createdAt     DateTime    @default(now())
 }
